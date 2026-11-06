@@ -5,85 +5,244 @@ namespace App\Http\Controllers;
 use App\Models\Pinjaman;
 use App\Models\Anggota;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class PinjamanController extends Controller
 {
     public function index(Request $request)
     {
-        $keyword = $request->input('search');
+        $query = Pinjaman::query();
 
-        $pinjamans = Pinjaman::with(['anggota', 'approver'])
-            ->when($keyword, function ($query, $keyword) {
-                $query->whereHas('anggota', function ($q) use ($keyword) {
-                    $q->where('nama', 'like', "%{$keyword}%")
-                      ->orWhere('nik', 'like', "%{$keyword}%");
-                });
-            })->latest()->paginate(10)->withQueryString();
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
 
-        return view('pinjaman.index', compact('pinjamans', 'keyword'));
+        $pinjamans = $query->paginate(10)->withQueryString();
+
+        $totalPengajuan = Pinjaman::count();
+        $menunggu       = Pinjaman::where('status', 'diajukan')->count();
+        $disetujui      = Pinjaman::where('status', 'disetujui')->count();
+        $dicairkan      = Pinjaman::where('status', 'dicairkan')->count();
+
+        return view('pinjaman.index', compact(
+            'pinjamans',
+            'totalPengajuan',
+            'menunggu',
+            'disetujui',
+            'dicairkan'
+        ));
     }
 
     public function create()
     {
-        $anggotas = Anggota::where('status', 'aktif')->orderBy('nama')->get();
+        $anggotas = Anggota::orderBy('nama')->get();
+
         return view('pinjaman.create', compact('anggotas'));
     }
 
     public function store(Request $request)
     {
-        $data = Validator::make($request->all(), [
-            'anggota_id' => 'required|exists:anggotas,id',
-            'jumlah_pengajuan' => 'required|numeric|min:100000',
-            'bunga_persen' => 'required|numeric|min:0|max:100',
-            'tenor_bulan' => 'required|integer|min:1|max:120',
-        ])->validate();
+        $validated = $request->validate([
+            'anggota_id'       => ['required', 'exists:anggotas,id'],
+            'jumlah_pengajuan' => ['required', 'numeric', 'min:1'],
+            'bunga_persen'     => ['required', 'numeric', 'min:0', 'max:100'],
+            'tenor_bulan'      => ['required', 'integer', 'min:1', 'max:120'],
+            'tujuan'           => ['required', 'string', 'max:2000'],
+        ]);
 
-        $data['status'] = 'pengajuan';
+        $validated['status'] = 'diajukan';
 
-        Pinjaman::create($data);
+        Pinjaman::create($validated);
 
-        return redirect()->route('pinjaman.index')->with('success', 'Pengajuan pinjaman berhasil dibuat.');
+        return redirect()
+            ->route('pinjaman.index')
+            ->with('success', 'Pengajuan pinjaman berhasil disimpan.');
     }
 
-    public function edit($id)
+    public function show(Pinjaman $pinjaman)
     {
-        $pinjaman = Pinjaman::findOrFail($id);
-        $anggotas = Anggota::where('status', 'aktif')->orderBy('nama')->get();
+        $pinjaman->load(['anggota', 'pengurus']);
+
+        return view('pinjaman.show', compact('pinjaman'));
+    }
+
+    public function edit(Pinjaman $pinjaman)
+    {
+        abort_unless(
+            $pinjaman->status === 'diajukan',
+            403,
+            'Hanya pengajuan yang belum diproses yang dapat diubah.'
+        );
+
+        $anggotas = Anggota::orderBy('nama')->get();
 
         return view('pinjaman.edit', compact('pinjaman', 'anggotas'));
     }
 
-    public function update(Request $request, $id)
+    public function update(Request $request, Pinjaman $pinjaman)
     {
-        $pinjaman = Pinjaman::findOrFail($id);
+        abort_unless(
+            $pinjaman->status === 'diajukan',
+            403,
+            'Pengajuan yang sudah diproses tidak dapat diubah.'
+        );
 
-        $data = Validator::make($request->all(), [
-            'anggota_id' => 'required|exists:anggotas,id',
-            'jumlah_pengajuan' => 'required|numeric|min:100000',
-            'jumlah_disetujui' => 'nullable|numeric|min:0',
-            'bunga_persen' => 'required|numeric|min:0|max:100',
-            'tenor_bulan' => 'required|integer|min:1|max:120',
-            'status' => 'required|in:pengajuan,disetujui,ditolak,lunas',
-        ])->validate();
+        $validated = $request->validate([
+            'anggota_id'       => 'required|exists:anggotas,id',
+            'jumlah_pengajuan' => 'required|numeric|min:1',
+            'bunga_persen'     => 'required|numeric|min:0|max:100',
+            'tenor_bulan'      => 'required|integer|min:1|max:120',
+            'tujuan'           => 'required|string|max:2000',
+        ]);
 
-        if (in_array($data['status'], ['disetujui', 'ditolak'])) {
-            $data['approved_by'] = auth()->id();
-            if ($data['status'] === 'disetujui' && empty($data['jumlah_disetujui'])) {
-                $data['jumlah_disetujui'] = $data['jumlah_pengajuan'];
-            }
-        }
+        $pinjaman->update($validated);
 
-        $pinjaman->update($data);
-
-        return redirect()->route('pinjaman.index')->with('success', 'Data pinjaman berhasil diperbarui.');
+        return redirect()
+            ->route('pinjaman.index')
+            ->with('success', 'Data pinjaman berhasil diperbarui.');
     }
 
-    public function destroy($id)
+    public function destroy(Pinjaman $pinjaman)
     {
-        $pinjaman = Pinjaman::findOrFail($id);
+        abort_unless(
+            $pinjaman->status === 'diajukan',
+            403,
+            'Pinjaman yang sudah diproses tidak dapat dihapus.'
+        );
+
         $pinjaman->delete();
 
-        return redirect()->route('pinjaman.index')->with('success', 'Data pinjaman berhasil dihapus.');
+        return back()->with('success', 'Pengajuan pinjaman berhasil dihapus.');
+    }
+
+    public function approve(Request $request, Pinjaman $pinjaman)
+    {
+        $validated = $request->validate([
+            'jumlah_disetujui'    => 'required|numeric|min:1',
+            'catatan_persetujuan' => 'nullable|string|max:2000',
+        ]);
+
+        DB::transaction(function () use ($pinjaman, $validated) {
+            $data = Pinjaman::whereKey($pinjaman->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($data->status !== 'diajukan') {
+                throw ValidationException::withMessages([
+                    'status' => 'Pengajuan ini sudah diproses.',
+                ]);
+            }
+
+            if ($validated['jumlah_disetujui'] > $data->jumlah_pengajuan) {
+                throw ValidationException::withMessages([
+                    'jumlah_disetujui' => 'Jumlah yang disetujui tidak boleh melebihi pengajuan.',
+                ]);
+            }
+
+            $data->update([
+                'jumlah_disetujui'    => $validated['jumlah_disetujui'],
+                'status'              => 'disetujui',
+                'approved_by'         => auth()->id(),
+                'approved_at'         => now(),
+                'catatan_persetujuan' => $validated['catatan_persetujuan'] ?? null,
+            ]);
+        });
+
+        return back()->with('success', 'Pinjaman berhasil disetujui.');
+    }
+
+    public function reject(Request $request, Pinjaman $pinjaman)
+    {
+        $validated = $request->validate([
+            'catatan_persetujuan' => 'required|string|max:2000',
+        ]);
+
+        DB::transaction(function () use ($pinjaman, $validated) {
+            $data = Pinjaman::whereKey($pinjaman->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($data->status !== 'diajukan') {
+                throw ValidationException::withMessages([
+                    'status' => 'Pengajuan ini sudah diproses.',
+                ]);
+            }
+
+            $data->update([
+                'status'              => 'ditolak',
+                'approved_by'         => auth()->id(),
+                'approved_at'         => now(),
+                'catatan_persetujuan' => $validated['catatan_persetujuan'],
+            ]);
+        });
+
+        return back()->with('success', 'Pengajuan pinjaman ditolak.');
+    }
+
+    public function disburse(Pinjaman $pinjaman)
+    {
+        DB::transaction(function () use ($pinjaman) {
+            $data = Pinjaman::whereKey($pinjaman->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($data->status !== 'disetujui') {
+                throw ValidationException::withMessages([
+                    'status' => 'Hanya pinjaman yang disetujui dapat dicairkan.',
+                ]);
+            }
+
+            $data->update([
+                'status'       => 'dicairkan',
+                'disbursed_at' => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Pinjaman berhasil dicairkan.');
+    }
+
+    public function markPaid(Pinjaman $pinjaman)
+    {
+        DB::transaction(function () use ($pinjaman) {
+            $data = Pinjaman::whereKey($pinjaman->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($data->status !== 'dicairkan') {
+                throw ValidationException::withMessages([
+                    'status' => 'Hanya pinjaman yang sudah dicairkan dapat dilunasi.',
+                ]);
+            }
+
+            $data->update([
+                'status'   => 'lunas',
+                'lunas_at' => now(),
+            ]);
+        });
+
+        return back()->with('success', 'Pinjaman berhasil dilunasi.');
+    }
+
+    public function cancel(Pinjaman $pinjaman)
+    {
+        DB::transaction(function () use ($pinjaman) {
+            $data = Pinjaman::whereKey($pinjaman->id)
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (!in_array($data->status, ['diajukan', 'disetujui'])) {
+                throw ValidationException::withMessages([
+                    'status' => 'Pinjaman ini tidak dapat dibatalkan.',
+                ]);
+            }
+
+            $data->update([
+                'status' => 'dibatalkan',
+            ]);
+        });
+
+        return back()->with('success', 'Pinjaman berhasil dibatalkan.');
     }
 }

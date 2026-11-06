@@ -1,138 +1,206 @@
 @extends('layouts.app')
 
-@section('title', 'Data Pinjaman - KoperasiKu')
+@section('title', 'Manajemen Pinjaman')
 
 @section('content')
-<div class="container py-3">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid">
+    <div class="d-flex justify-content-between mb-3">
         <div>
-            <h1 class="h3 mb-0 fw-bold">Data Pinjaman</h1>
-            <p class="text-muted mb-0">Kelola pengajuan dan status pinjaman anggota.</p>
+            <h3>Manajemen Pinjaman</h3>
+            <p class="text-muted">Pengelolaan pengajuan pinjaman anggota koperasi</p>
         </div>
-        <a href="{{ route('pinjaman.create') }}" class="btn btn-primary shadow-sm">
-            <i class="bi bi-plus-circle me-1"></i> + Ajukan Pinjaman
+        <a href="{{ route('pinjaman.create') }}" class="btn btn-primary align-self-start">
+            <i class="fas fa-plus"></i> Tambah Pinjaman
         </a>
     </div>
 
     @if(session('success'))
-        <div class="alert alert-success alert-dismissible fade show mb-3 border-0 shadow-sm" role="alert">
-            <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="alert alert-success alert-dismissible fade show">
+            {{ session('success') }}
+            <button type="button" class="close" data-dismiss="alert">
+                <span>&times;</span>
+            </button>
         </div>
     @endif
 
-    <div class="card shadow-sm border-0">
-        <div class="card-body p-4">
-            <form action="{{ route('pinjaman.index') }}" method="GET" class="mb-4">
-                <div class="input-group">
-                    <input type="text" name="search" class="form-control" placeholder="Cari NIK atau Nama Anggota..." value="{{ $keyword ?? '' }}">
-                    <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i> Cari</button>
+    <div class="row">
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-info">
+                <div class="inner">
+                    <h3>{{ $totalPengajuan }}</h3>
+                    <p>Total Pengajuan</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-file-alt"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-warning">
+                <div class="inner">
+                    <h3>{{ $menunggu }}</h3>
+                    <p>Menunggu Persetujuan</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-success">
+                <div class="inner">
+                    <h3>{{ $disetujui }}</h3>
+                    <p>Disetujui</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+            <div class="small-box bg-primary">
+                <div class="inner">
+                    <h3>{{ $dicairkan }}</h3>
+                    <p>Sudah Dicairkan</p>
+                </div>
+                <div class="icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card card-outline card-primary">
+        <div class="card-header">
+            <h3 class="card-title">Daftar Pengajuan Pinjaman</h3>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row mb-3">
+                <div class="col-md-5 mb-2">
+                    <input type="text" 
+                           name="search" 
+                           class="form-control" 
+                           placeholder="Cari nama anggota..." 
+                           value="{{ request('search') }}">
+                </div>
+                <div class="col-md-4 mb-2">
+                    <select name="status" class="form-control">
+                        <option value="">Semua Status</option>
+                        @foreach([
+                            'diajukan', 
+                            'disetujui', 
+                            'ditolak', 
+                            'dicairkan', 
+                            'lunas', 
+                            'dibatalkan'
+                        ] as $status)
+                            <option value="{{ $status }}" @selected(request('status') == $status)>
+                                {{ ucfirst($status) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3 mb-2">
+                    <button class="btn btn-primary">
+                        <i class="fas fa-search"></i> Cari
+                    </button>
+                    <a href="{{ route('pinjaman.index') }}" class="btn btn-secondary">
+                        Reset
+                    </a>
                 </div>
             </form>
 
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                <table class="table table-bordered table-hover">
+                    <thead class="thead-light">
                         <tr>
-                            <th class="py-3">Anggota</th>
-                            <th class="py-3">Pengajuan</th>
-                            <th class="py-3">Disetujui</th>
-                            <th class="py-3">Bunga / Tenor</th>
-                            <th class="py-3">Status</th>
-                            <th class="py-3">Penyetuju</th>
-                            <th class="py-3" style="min-width: 160px">Aksi</th>
+                            <th>No</th>
+                            <th>Anggota</th>
+                            <th>Jumlah Pengajuan</th>
+                            <th>Jumlah Disetujui</th>
+                            <th>Tenor</th>
+                            <th>Bunga</th>
+                            <th>Status</th>
+                            <th width="190">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse($pinjamans as $item)
+                        @forelse($pinjamans as $index => $pinjaman)
                             <tr>
+                                <td>{{ $pinjamans->firstItem() + $index }}</td>
                                 <td>
-                                    <div class="fw-bold">{{ $item->anggota->nama ?? '-' }}</div>
-                                    <small class="text-muted">NIK: {{ $item->anggota->nik ?? '-' }}</small>
+                                    <strong>{{ $pinjaman->anggota->nama }}</strong>
                                 </td>
-                                <td>Rp {{ number_format($item->jumlah_pengajuan, 0, ',', '.') }}</td>
-                                <td class="fw-semibold text-success">
-                                    {{ $item->jumlah_disetujui ? 'Rp ' . number_format($item->jumlah_disetujui, 0, ',', '.') : '-' }}
+                                <td>
+                                    Rp {{ number_format($pinjaman->jumlah_pengajuan, 0, ',', '.') }}
                                 </td>
-                                <td>{{ $item->bunga_persen }}% / {{ $item->tenor_bulan }} bln</td>
+                                <td>
+                                    @if($pinjaman->jumlah_disetujui !== null)
+                                        Rp {{ number_format($pinjaman->jumlah_disetujui, 0, ',', '.') }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td>{{ $pinjaman->tenor_bulan }} Bulan</td>
+                                <td>{{ $pinjaman->bunga_persen }}%</td>
                                 <td>
                                     @php
-                                        $badgeClass = [
-                                            'pengajuan' => 'warning text-dark',
-                                            'disetujui' => 'success',
-                                            'ditolak' => 'danger',
-                                            'lunas' => 'info',
-                                        ][$item->status] ?? 'secondary';
+                                        $colors = [
+                                            'diajukan'   => 'warning',
+                                            'disetujui'  => 'info',
+                                            'ditolak'    => 'danger',
+                                            'dicairkan'  => 'primary',
+                                            'lunas'      => 'success',
+                                            'dibatalkan' => 'secondary',
+                                        ];
                                     @endphp
-                                    <span class="badge rounded-pill bg-{{ $badgeClass }} px-3 py-2">
-                                        {{ ucfirst($item->status) }}
+                                    <span class="badge badge-{{ $colors[$pinjaman->status] ?? 'secondary' }}">
+                                        {{ ucfirst($pinjaman->status) }}
                                     </span>
                                 </td>
-                                <td>{{ $item->approver->name ?? '-' }}</td>
                                 <td>
-                                    <a href="{{ route('pinjaman.edit', $item->id) }}" class="btn btn-sm btn-outline-primary me-1">
-                                        <i class="bi bi-pencil"></i> Edit
+                                    <a href="{{ route('pinjaman.show', $pinjaman->id) }}" 
+                                       class="btn btn-info btn-sm" 
+                                       title="Detail">
+                                        <i class="fas fa-eye"></i>
                                     </a>
-                                    <button type="button" class="btn btn-sm btn-outline-danger" 
-                                            data-bs-toggle="modal" 
-                                            data-bs-target="#deleteModal" 
-                                            data-url="{{ route('pinjaman.destroy', $item->id) }}">
-                                        <i class="bi bi-trash"></i> Hapus
-                                    </button>
+
+                                    @if($pinjaman->status === 'diajukan')
+                                        <a href="{{ route('pinjaman.edit', $pinjaman->id) }}" 
+                                           class="btn btn-warning btn-sm" 
+                                           title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <form action="{{ route('pinjaman.destroy', $pinjaman->id) }}" 
+                                              method="POST" 
+                                              class="d-inline" 
+                                              onsubmit="return confirm('Hapus pengajuan ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="text-center py-5 text-muted">Belum ada data pinjaman.</td>
+                                <td colspan="8" class="text-center">
+                                    Belum ada data pinjaman.
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
             </div>
 
-            <div class="mt-4">
-                {{ $pinjamans->links() }}
-            </div>
+            {{ $pinjamans->links() }}
         </div>
     </div>
 </div>
-
-<!-- Modal Konfirmasi Hapus -->
-<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title fw-bold">
-                    <i class="bi bi-exclamation-triangle-fill me-2"></i>Konfirmasi Hapus
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-4">
-                <p class="mb-1 fs-6">Yakin ingin menghapus data pinjaman ini?</p>
-                <small class="text-muted">Data yang dihapus tidak bisa dikembalikan.</small>
-            </div>
-            <div class="modal-footer bg-light border-0">
-                <button type="button" class="btn btn-secondary px-3" data-bs-dismiss="modal">Batal</button>
-                <form id="deleteForm" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger px-4 fw-semibold">Ya, Hapus</button>
-                </form>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const deleteModal = document.getElementById('deleteModal');
-        if (deleteModal) {
-            deleteModal.addEventListener('show.bs.modal', function (event) {
-                const button = event.relatedTarget;
-                const url = button.getAttribute('data-url');
-                document.getElementById('deleteForm').action = url;
-            });
-        }
-    });
-</script>
 @endsection

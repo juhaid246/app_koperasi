@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('angsuran', function (Blueprint $table) {
     $table->id();
-    $table->foreignId('pinjaman_id')->constrained('pinjaman')->cascadeOnDelete();
+    $table->foreignId('pinjaman_id')->constrained('pinjamans')->onDelete('cascade');
     $table->integer('angsuran_ke');
     $table->date('jatuh_tempo')->nullable();
     $table->decimal('jumlah_tagihan', 15, 2); // Presisi nominal rupiah sesuai modul

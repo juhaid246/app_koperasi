@@ -2,130 +2,213 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>@yield('title', 'KoperasiKu')</title>
-    <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    <style>
-        body {
-            background-color: #f4f6f9;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-        }
-        .navbar {
-            box-shadow: 0 2px 10px rgba(0,0,0,.08);
-        }
-        .card {
-            border-radius: 12px;
-            border: none;
-        }
-        .form-control, .form-select {
-            border-radius: 8px;
-            padding: 0.6rem 0.9rem;
-        }
-        .btn {
-            border-radius: 8px;
-            padding: 0.5rem 1.2rem;
-            font-weight: 500;
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>@yield('title', 'KoperasiKu') | AdminLTE</title>
+
+    <!-- Google Font -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,400i,700">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- AdminLTE 3 CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+
+    @stack('styles')
 </head>
-<body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-        <div class="container">
-            <a class="navbar-brand fw-bold fs-4" href="{{ url('/') }}">
-                <i class="bi bi-wallet2 me-2"></i>KoperasiKu
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            
-            <div class="collapse navbar-collapse" id="navbarNav">
-                
-                <!-- MENU KIRI (Teks Link Navbar Sesuai Role) -->
-                <ul class="navbar-nav me-auto">
-                    @auth
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <!-- Left navbar links -->
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button" aria-label="Buka atau tutup sidebar">
+                    <i class="fas fa-bars"></i>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Right navbar links -->
+        <ul class="navbar-nav ml-auto">
+            @auth
+                <li class="nav-item d-flex align-items-center mr-3">
+                    <span class="text-dark">
+                        <i class="fas fa-user-circle mr-1"></i>
+                        {{ auth()->user()->name }}
+                        ({{ ucfirst(auth()->user()->role) }})
+                    </span>
+                </li>
+
+                <li class="nav-item">
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit" class="btn btn-danger btn-sm mt-1">
+                            <i class="fas fa-sign-out-alt mr-1"></i>
+                            Logout
+                        </button>
+                    </form>
+                </li>
+            @endauth
+        </ul>
+    </nav>
+    <!-- /.navbar -->
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <!-- Brand Logo -->
+        <a href="{{ url('/') }}" class="brand-link text-center">
+            <i class="fas fa-landmark ml-2 mr-1"></i>
+            <span class="brand-text font-weight-light">
+                <strong>KoperasiKu</strong>
+            </span>
+        </a>
+
+        <div class="sidebar">
+            <!-- User Panel -->
+            @auth
+                <div class="user-panel mt-3 pb-3 mb-3 d-flex">
+                    <div class="image">
+                        <i class="fas fa-user-circle fa-2x text-white"></i>
+                    </div>
+                    <div class="info">
+                        <span class="d-block text-white">
+                            {{ auth()->user()->name }}
+                        </span>
+                        <small class="text-light">
+                            {{ ucfirst(auth()->user()->role) }}
+                        </small>
+                    </div>
+                </div>
+            @endauth
+
+            <!-- Sidebar Menu -->
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                    
+                    <!-- Dashboard -->
+                    <li class="nav-item">
+                        <a href="{{ route('dashboard') }}" class="nav-link {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-tachometer-alt"></i>
+                            <p>Dashboard</p>
+                        </a>
+                    </li>
+
+                    <!-- Data Anggota -->
+                    <li class="nav-item">
+                        <a href="{{ route('anggotas.index') }}" class="nav-link {{ request()->routeIs('anggotas.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-users"></i>
+                            <p>Data Anggota</p>
+                        </a>
+                    </li>
+
+                    <!-- Pinjaman -->
+                    <li class="nav-item">
+                        <a href="{{ route('pinjaman.index') }}" class="nav-link {{ request()->routeIs('pinjaman.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-hand-holding-usd"></i>
+                            <p>Pinjaman</p>
+                        </a>
+                    </li>
+
+                    <!-- Simpanan (Khusus Admin atau role tertentu jika diperlukan, sesuaikan kebutuhan) -->
+                    <li class="nav-item">
+                        <a href="{{ route('simpanans.index') }}" class="nav-link {{ request()->routeIs('simpanans.*') ? 'active' : '' }}">
+                            <i class="nav-icon fas fa-wallet"></i>
+                            <p>Simpanan</p>
+                        </a>
+                    </li>
+                    
+                    <!-- Menu khusus Admin -->
+                    @if(auth()->user()?->role === 'admin')
                         <li class="nav-item">
-                            <a class="nav-link text-white fw-semibold" href="{{ route('dashboard') }}">Dashboard</a>
-                        </li>
-
-                        @if(in_array(auth()->user()->role, ['admin', 'pengurus']))
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('anggota.index') }}">Data Anggota</a>
-                            </li>
-                        @endif
-
-                        @if(in_array(auth()->user()->role, ['admin', 'bendahara']))
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('simpanan.index') }}">Data Simpanan</a>
-                            </li>
-                        @endif
-
-                        @if(in_array(auth()->user()->role, ['admin', 'pengurus', 'bendahara']))
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('pinjaman.index') }}">Data Pinjaman</a>
-                            </li>
-                        @endif
-                        @if(in_array(auth()->user()->role, ['admin', 'bendahara']))
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('angsuran.index') }}">Data Angsuran</a>
-                            </li>
-                        @endif
-                        @if(auth()->user()->role === 'admin')
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('users.index') }}">Kelola User</a>
-                            </li>
-                        @endif
-                    @endauth
-                </ul>
-
-                <!-- MENU KANAN (Nama User, Profil & Form Logout) -->
-                <ul class="navbar-nav ms-auto">
-                    @auth
-                        <li class="nav-item dropdown">
-                            <a id="navbarDropdown" class="nav-link dropdown-toggle text-white fw-semibold" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="bi bi-person-circle me-1"></i> {{ Auth::user()->name }}
+                            <a href="{{ route('users.index') }}" class="nav-link {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                                <i class="nav-icon fas fa-user-cog"></i>
+                                <p>Manajemen User</p>
                             </a>
+                        </li>
+                    @endif
 
-                            <div class="dropdown-menu dropdown-menu-end shadow-sm border-0 mt-2">
-                                <a class="dropdown-item py-2" href="{{ route('profile.edit') }}">
-                                    <i class="bi bi-person me-2 text-muted"></i> Profil Saya
-                                </a>
-                                
-                                <div class="dropdown-divider"></div>
-                                
-                                <form action="{{ route('logout') }}" method="POST">
-                                    @csrf
-                                    <button type="submit" class="dropdown-item py-2 text-danger fw-semibold">
-                                        <i class="bi bi-box-arrow-right me-2"></i> Keluar (Logout)
-                                    </button>
-                                </form>
-                            </div>
-                        </li>
-                    @else
-                        <!-- Tampil Jika Belum Login -->
-                        <li class="nav-item">
-                            <a class="nav-link text-white fw-semibold" href="{{ route('login') }}">Masuk</a>
-                        </li>
-                        @if (Route::has('register'))
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{{ route('register') }}">Daftar</a>
-                            </li>
-                        @endif
-                    @endauth
                 </ul>
+            </nav>
+        </div>
+    </aside>
+    <!-- /.sidebar -->
 
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+        
+        <!-- Content Header -->
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0">
+                            @yield('page-title', 'Dashboard')
+                        </h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item">
+                                <a href="{{ url('/') }}">Home</a>
+                            </li>
+                            <li class="breadcrumb-item active">
+                                @yield('page-title', 'Dashboard')
+                            </li>
+                        </ol>
+                    </div>
+                </div>
             </div>
         </div>
-    </nav>
 
-    <!-- KONTEN UTAMA HALAMAN (Dashboard, Form, Tabel, dll) MASUK KE SINI -->
-    <main>
-        @yield('content')
-    </main>
+        <!-- Main Content -->
+        <section class="content">
+            <div class="container-fluid">
 
-    <!-- Bootstrap JS (Wajib ada agar dropdown & tombol menu HP bisa diklik) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+                @if(session('success'))
+                    <div class="alert alert-success alert-dismissible fade show">
+                        <i class="fas fa-check-circle mr-1"></i>
+                        {{ session('success') }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Tutup">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                @endif
+
+                @if(session('error'))
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        <i class="fas fa-exclamation-circle mr-1"></i>
+                        {{ session('error') }}
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Tutup">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                @endif
+
+                @yield('content')
+
+            </div>
+        </section>
+    </div>
+    <!-- /.content-wrapper -->
+
+    <!-- Footer -->
+    <footer class="main-footer">
+        <strong>&copy; {{ date('Y') }} KoperasiKu.</strong> Sistem Informasi Koperasi Simpan Pinjam.
+        <div class="float-right d-none d-sm-inline-block">
+            <b>Versi</b> 1.0
+        </div>
+    </footer>
+
+</div>
+<!-- /.wrapper -->
+
+<!-- REQUIRED SCRIPTS -->
+<!-- jQuery -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<!-- Bootstrap 4 -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<!-- AdminLTE 3 -->
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+
+@stack('scripts')
 </body>
 </html>

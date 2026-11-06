@@ -14,6 +14,12 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
+Route::resource('anggotas', AnggotaController::class);
+Route::resource('simpanans', SimpananController::class);
+
+Route::middleware('role:admin')->group(function () {
+    Route::resource('users', UserController::class);
+}); // <-- Kurung kurawal penutup group ditambahkan di sini
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -24,9 +30,8 @@ Route::middleware('auth')->group(function () {
 // Admin dan Pengurus
 Route::middleware(['auth', 'role:admin,pengurus'])->group(function () {
     // Route CRUD Anggota
-    Route::resource('anggota', AnggotaController::class)->parameters([
-        'anggota' => 'anggota'
-    ]);
+    Route::resource('anggota', AnggotaController::class)->parameters(['anggota' => 'anggota']);
+    Route::post('/anggota', [AnggotaController::class, 'store'])->name('anggota.store');
 });
 
 // Admin dan Bendahara
@@ -38,9 +43,19 @@ Route::middleware(['auth', 'role:admin,bendahara'])->group(function () {
 
 // Admin, Pengurus, dan Bendahara
 Route::middleware(['auth', 'role:admin,pengurus,bendahara'])->group(function () {
+    
+    // Aksi khusus pinjaman (harus diletakkan di atas resource)
+    Route::post('/pinjaman/{pinjaman}/approve', [PinjamanController::class, 'approve'])->name('pinjaman.approve');
+    Route::post('/pinjaman/{pinjaman}/reject', [PinjamanController::class, 'reject'])->name('pinjaman.reject');
+    Route::post('/pinjaman/{pinjaman}/disburse', [PinjamanController::class, 'disburse'])->name('pinjaman.disburse');
+    Route::post('/pinjaman/{pinjaman}/paid', [PinjamanController::class, 'markPaid'])->name('pinjaman.paid');
+    Route::post('/pinjaman/{pinjaman}/cancel', [PinjamanController::class, 'cancel'])->name('pinjaman.cancel');
+
+    // Resource Route
     Route::resource('pinjaman', PinjamanController::class)->parameters([
         'pinjaman' => 'pinjaman'
     ]);
+
 });
 
 // Khusus Admin
